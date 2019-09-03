@@ -1,23 +1,24 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"math/rand"
-	"time"
+	"net/http"
 
+	"github.com/daiLlew/sessions-service-spike/api"
 	"github.com/daiLlew/sessions-service-spike/sessions"
+	"github.com/gorilla/mux"
 )
 
 func main() {
-	source := rand.NewSource(time.Now().UnixNano())
-	r := rand.New(source)
+	repo := sessions.NewRepository()
+	factory := sessions.NewFactory()
 
-	idGenerator := sessions.NewIDGenerator(r)
+	router := mux.NewRouter()
 
-	sess := sessions.New("test@test.com", idGenerator)
+	createSessionHandler := api.CreateSessionHandler(factory, repo)
+	router.HandleFunc("/session", createSessionHandler).Methods("POST")
 
-	b, _ := json.MarshalIndent(sess, "", "  ")
+	getSessionHandler := api.GetSessionHandler(repo)
+	router.HandleFunc("/session/{id}", getSessionHandler).Methods("GET")
 
-	fmt.Printf("%s", string(b))
+	http.ListenAndServe(":8080", router)
 }

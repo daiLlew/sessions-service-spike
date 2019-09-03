@@ -27,17 +27,6 @@ type jsonModel struct {
 	LastAccessed string `json:"lastAccess"`
 }
 
-func New(email string, idGen IDGenerator) *Session {
-	now := time.Now()
-
-	return &Session{
-		ID:           idGen.NewID(),
-		Email:        email,
-		Start:        now,
-		LastAccessed: now,
-	}
-}
-
 func (sess *Session) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&jsonModel{
 		ID:           sess.ID,
