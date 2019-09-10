@@ -8,23 +8,48 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func CreateSessionHandler(factory *sessions.Factory, repository *sessions.Repository) http.HandlerFunc {
+type SessionCache interface {
+	Get(id string) (*sessions.Session, error)
+	Set(*sessions.Session)
+}
+
+func CreateSessionHandler(factory *sessions.Factory, cache *sessions.Cache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sess := factory.NewSession("test@test.com")
-		repository.Save(sess)
+		cache.Set(sess)
 
 		w.Write([]byte(sess.ID))
 		w.WriteHeader(201)
 	}
 }
 
-func GetSessionHandler(repository *sessions.Repository) http.HandlerFunc {
+func GetSessionHandler(cache *sessions.Cache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sessID := mux.Vars(r)["id"]
-		sess, _ := repository.GetByID(sessID)
 
-		b, _ := json.Marshal(sess)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(b)
+		sess, err := cache.Get(sessID)
+		if err != nil {
+			writeErrorResponse(w, err.Error(), 500)
+		} else if sess == nil {
+			writeErrorResponse(w, "session not found", 404)
+		} else {
+			writeResponse(w, sess)
+		}
 	}
+}
+
+func writeResponse(w http.ResponseWriter, sess *sessions.Session) {
+	b, err := json.Marshal(sess)
+	if err != nil {
+		writeErrorResponse(w, err.Error(), 500)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
+func writeErrorResponse(w http.ResponseWriter, body string, status int) {
+	w.WriteHeader(status)
+	w.Write([]byte(body))
 }
