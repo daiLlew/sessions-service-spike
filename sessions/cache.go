@@ -45,7 +45,7 @@ func (c *Cache) purge() {
 	}
 }
 
-func (c *Cache) Get(id string) (*Session, error) {
+func (c *Cache) GetByID(id string) (*Session, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -66,6 +66,28 @@ func (c *Cache) Get(id string) (*Session, error) {
 	return sess, nil
 }
 
+func (c *Cache) GetByEmail(email string) (*Session, error) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	findByEmail := func(s *Session) bool {
+		return s.Email == email
+	}
+
+	sess := c.findSessionBy(findByEmail)
+	if sess == nil {
+		return nil, nil
+	}
+
+	if c.isExpired(sess) {
+		log.Event(nil, "session expired")
+		delete(c.store, sess.ID)
+		return nil, nil
+	}
+
+	return sess, nil
+}
+
 func (c *Cache) Set(sess *Session) {
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -75,6 +97,15 @@ func (c *Cache) Set(sess *Session) {
 
 func (c *Cache) isExpired(sess *Session) bool {
 	return time.Since(sess.LastAccessed) >= c.ttl
+}
+
+func (c *Cache) findSessionBy(filterFunc func(s *Session) bool) *Session {
+	for _, sess := range c.store {
+		if filterFunc(sess) {
+			return sess
+		}
+	}
+	return nil
 }
 
 func runPurger(cache *Cache) {
