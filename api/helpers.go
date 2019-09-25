@@ -25,6 +25,11 @@ func getNewSessionDetails(ctx context.Context, body io.ReadCloser) (*NewSessionD
 		log.Event(ctx, "failed to unmarshal request body", log.Error(err))
 		return nil, err
 	}
+
+	if len(details.Email) == 0 {
+		return nil, BadRequestErr
+	}
+
 	return &details, nil
 }
 

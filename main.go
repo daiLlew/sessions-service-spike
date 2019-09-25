@@ -12,8 +12,8 @@ import (
 )
 
 func main() {
-	purgeInterval := time.Minute * 5
-	sessionTTL := time.Minute * 10
+	purgeInterval := time.Second * 15
+	sessionTTL := time.Second * 30
 
 	sessionCache := sessions.NewCache(purgeInterval, sessionTTL)
 	factory := sessions.NewFactory()
@@ -32,7 +32,7 @@ func main() {
 	findSessionHandler := api.FindSessionHandler(sessionCache)
 	router.HandleFunc("/search", findSessionHandler).Methods("GET")
 
-	if err := http.ListenAndServe(":8080", router); err != nil {
+	if err := http.ListenAndServe(":6666", router); err != nil {
 		log.Event(nil, "error starting http server", log.Error(err))
 		os.Exit(1)
 	}

@@ -1,11 +1,17 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
+	"github.com/ONSdigital/log.go/log"
 	"github.com/daiLlew/sessions-service-spike/sessions"
 	"github.com/gorilla/mux"
+)
+
+var (
+	BadRequestErr = errors.New("bad request")
 )
 
 type SessionCache interface {
@@ -14,25 +20,14 @@ type SessionCache interface {
 	Set(*sessions.Session)
 }
 
-func CreateSessionHandler(factory *sessions.Factory, cache *sessions.Cache) http.HandlerFunc {
+func CreateSessionHandler(factory *sessions.Factory, cache SessionCache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		details, err := getNewSessionDetails(ctx, r.Body)
+		sessCreated, err := createNewSession(r, factory, cache)
 		if err != nil {
-			writeErrorResponse(ctx, w, err.Error(), http.StatusBadRequest)
-			return
+			handleCreateSessionError(r.Context(), w, err)
+		} else {
+			writeResponse(r.Context(), w, sessCreated, http.StatusCreated)
 		}
-
-		sess := factory.NewSession(details.Email)
-		cache.Set(sess)
-
-		created := SessionCreated{
-			URI: fmt.Sprintf("/session/%s", sess.ID),
-			ID:  sess.ID,
-		}
-
-		writeResponse(ctx, w, created, http.StatusCreated)
 	}
 }
 
@@ -43,35 +38,52 @@ func GetSessionHandler(cache *sessions.Cache) http.HandlerFunc {
 
 		sess, err := cache.GetByID(sessID)
 		if err != nil {
-			writeErrorResponse(ctx, w, err.Error(), http.StatusInternalServerError)
-		} else if sess == nil {
-			writeErrorResponse(ctx, w, "session not found", http.StatusNotFound)
+			handleGetSessionError(ctx, w, err)
 		} else {
 			writeResponse(ctx, w, sess, http.StatusOK)
 		}
 	}
 }
 
-func FindSessionHandler(cache *sessions.Cache) http.HandlerFunc {
+func FindSessionHandler(cache SessionCache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		userEmail := r.URL.Query().Get("email")
-		if len(userEmail) == 0 {
-			writeErrorResponse(ctx, w, "bad request", http.StatusBadRequest)
-			return
-		}
-
-		sess, err := cache.GetByEmail(userEmail)
+		sess, err := findSession(cache, r)
 		if err != nil {
-			writeErrorResponse(ctx, w, err.Error(), http.StatusBadRequest)
-			return
+			handleFindSessionError(ctx, w, err)
+		} else {
+			writeResponse(ctx, w, sess, http.StatusOK)
 		}
-
-		if sess == nil {
-			writeErrorResponse(ctx, w, "not found", http.StatusNotFound)
-			return
-		}
-
-		writeResponse(ctx, w, sess, http.StatusOK)
 	}
+}
+
+func createNewSession(r *http.Request, factory *sessions.Factory, cache SessionCache) (*SessionCreated, error) {
+	ctx := r.Context()
+
+	details, err := getNewSessionDetails(ctx, r.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	sess := factory.NewSession(details.Email)
+	cache.Set(sess)
+
+	sessCreated := &SessionCreated{
+		URI: fmt.Sprintf("/session/%s", sess.ID),
+		ID:  sess.ID,
+	}
+	return sessCreated, nil
+}
+
+func findSession(cache SessionCache, r *http.Request) (*sessions.Session, error) {
+	ctx := r.Context()
+	userEmail := r.URL.Query().Get("email")
+	logD := log.Data{"email": userEmail}
+
+	log.Event(ctx, "finding session by email", logD)
+	if len(userEmail) == 0 {
+		return nil, BadRequestErr
+	}
+
+	return cache.GetByEmail(userEmail)
 }
