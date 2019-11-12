@@ -14,10 +14,10 @@ type IDGenerator interface {
 }
 
 type Session struct {
-	ID           string    `json:"id"`
-	Email        string    `json:"email"`
-	Start        time.Time `json:"start"`
-	LastAccessed time.Time `json:"lastAccess"`
+	ID           string    `json:"id" redis:"id"`
+	Email        string    `json:"email" redis:"email"`
+	Start        time.Time `json:"start" redis:"start"`
+	LastAccessed time.Time `json:"lastAccess" redis:"lastAccess"`
 }
 
 type jsonModel struct {

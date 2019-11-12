@@ -26,44 +26,27 @@ func handleCreateSessionError(ctx context.Context, w http.ResponseWriter, err er
 }
 
 func handleGetSessionError(ctx context.Context, w http.ResponseWriter, err error) {
-	var status int
-	var body string
-
 	switch err {
 	case sessions.SessionNotFoundErr:
-		status = http.StatusNotFound
-		body = err.Error()
+		http.Error(w, "session not found", http.StatusNotFound)
 	case sessions.SessionExpiredErr:
-		status = http.StatusUnauthorized
-		body = err.Error()
+		http.Error(w, "session not found", http.StatusUnauthorized)
 	default:
-		status = http.StatusInternalServerError
-		body = "internal server error"
+		log.Event(ctx, "internal server error ", log.Error(err))
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
-
-	log.Event(ctx, "get session request unsuccessful", log.Error(err), log.Data{"status": status})
-	writeErrorResponse(ctx, w, body, status)
 }
 
 func handleFindSessionError(ctx context.Context, w http.ResponseWriter, err error) {
-	var status int
-	var body string
-
 	switch err {
 	case BadRequestErr:
-		status = http.StatusBadRequest
-		body = err.Error()
+		http.Error(w, err.Error(), http.StatusBadRequest)
 	case sessions.SessionNotFoundErr:
-		status = http.StatusNotFound
-		body = err.Error()
+		http.Error(w, "session not found", http.StatusNotFound)
 	case sessions.SessionExpiredErr:
-		status = http.StatusUnauthorized
-		body = err.Error()
+		http.Error(w, "session not found", http.StatusUnauthorized)
 	default:
-		status = http.StatusInternalServerError
-		body = "internal server error"
+		log.Event(ctx, "internal server error ", log.Error(err))
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
-
-	log.Event(ctx, "find session request unsuccessful", log.Error(err), log.Data{"status": status})
-	writeErrorResponse(ctx, w, body, status)
 }

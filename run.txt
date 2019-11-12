@@ -1,0 +1,9 @@
+docker run -it --network bridge --rm redis redis-cli -h some-redis
+
+
+
+
+docker run --name some-redis -p 6379:6379 -d redis
+
+
+docker exec -it some-redis redis-cli

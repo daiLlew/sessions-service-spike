@@ -17,7 +17,7 @@ var (
 type SessionCache interface {
 	GetByID(id string) (*sessions.Session, error)
 	GetByEmail(email string) (*sessions.Session, error)
-	Set(*sessions.Session)
+	Set(*sessions.Session) error
 }
 
 func CreateSessionHandler(factory *sessions.Factory, cache SessionCache) http.HandlerFunc {
@@ -31,7 +31,7 @@ func CreateSessionHandler(factory *sessions.Factory, cache SessionCache) http.Ha
 	}
 }
 
-func GetSessionHandler(cache *sessions.Cache) http.HandlerFunc {
+func GetSessionHandler(cache SessionCache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		sessID := mux.Vars(r)["id"]
@@ -65,8 +65,14 @@ func createNewSession(r *http.Request, factory *sessions.Factory, cache SessionC
 		return nil, err
 	}
 
+	log.Event(nil, "creating new session", log.Data{"details": details})
+
 	sess := factory.NewSession(details.Email)
-	cache.Set(sess)
+	if err := cache.Set(sess); err != nil {
+		return nil, err
+	}
+
+	log.Event(nil, "session saved successfully")
 
 	sessCreated := &SessionCreated{
 		URI: fmt.Sprintf("/session/%s", sess.ID),
