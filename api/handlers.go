@@ -11,14 +11,9 @@ import (
 )
 
 var (
-	BadRequestErr = errors.New("bad request")
+	BadRequestErr   = errors.New("bad request")
+	FlushAllSuccess = SimpleMessage{Message: "flushall completed successfully"}
 )
-
-type SessionCache interface {
-	GetByID(id string) (*sessions.Session, error)
-	GetByEmail(email string) (*sessions.Session, error)
-	Set(*sessions.Session) error
-}
 
 func CreateSessionHandler(factory *sessions.Factory, cache SessionCache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -53,6 +48,18 @@ func FindSessionHandler(cache SessionCache) http.HandlerFunc {
 			handleFindSessionError(ctx, w, err)
 		} else {
 			writeResponse(ctx, w, sess, http.StatusOK)
+		}
+	}
+}
+
+func FlushCashHandler(cache SessionCache) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		err := cache.FlushAll()
+		if err != nil {
+			handleFlushAllError(ctx, w, err)
+		} else {
+			writeResponse(ctx, w, FlushAllSuccess, 200)
 		}
 	}
 }

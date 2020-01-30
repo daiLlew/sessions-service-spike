@@ -50,3 +50,8 @@ func handleFindSessionError(ctx context.Context, w http.ResponseWriter, err erro
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }
+
+func handleFlushAllError(ctx context.Context, w http.ResponseWriter, err error) {
+	log.Event(ctx, "internal server error ", log.Error(err))
+	http.Error(w, "internal server error", http.StatusInternalServerError)
+}

@@ -9,7 +9,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
-const TTL = time.Second * 30
+const TTL = time.Minute * 30
 
 type Client struct {
 	pool redis.Pool
@@ -23,6 +23,19 @@ func NewCli() *Client {
 			return redis.Dial("tcp", ":6379")
 		},
 	}}
+}
+
+func (c *Client) FlushAll() error {
+	conn := c.pool.Get()
+	defer close(conn)
+
+	val, err := redis.String(conn.Do("FLUSHALL"))
+	if err != nil {
+		return err
+	}
+
+	log.Event(nil, "redis flushall response", log.Data{"response": val})
+	return err
 }
 
 func (c *Client) GetTTL(id string) (int, error) {
